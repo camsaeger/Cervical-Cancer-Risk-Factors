@@ -1,0 +1,469 @@
+---
+title: "Project 2"
+author: "Cam Saeger"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Introduction
+
+The issue at hand is taking a mixture of continuous and binary variables of women to determine any possible predictors and risk factors for cervical cancer. In this data set are 647 women, with only 24 of them being diagnosed with cervical cancer. There are 22 variables, 21 of them being explanatory variables and 1 being a response variable, Biopsy (1 = cancer, 0 = no cancer). In order to attempt to find any possible predictors, the variables will be explored to see which ones should be tested on, and then split into continuous and binary. Although the data is highly unbalanced between cancer and no cancer women, the goal is to determine if any of the 21 explanatory variables can be a predictor of cervical cancer to identify and attempt to stop the spread of the cancer. 
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE,include=FALSE}
+# Reading in the dataset and splitting into binary/continuous
+
+library(readxl)
+library(dplyr)
+library(knitr)
+library(ggplot2)
+library(kableExtra)
+
+
+cancer <- read.csv("CervicalCancer.csv")
+
+binaryCancer <- cancer %>%
+  select("Smokes", "Hormonal.Contraceptives", "IUD", "STDs", "STDs.condylomatosis", "STDs.syphilis", "STDs.pelvic.inflammatory.disease", "STDs.genital.herpes", "STDs.molluscum.contagiosum", "STDs.AIDS", "STDs.HIV", "STDs.Hepatitis.B", "STDs.HPV", "Biopsy")
+
+contCancer <- cancer %>%
+  select("Age", "Number.of.sexual.partners","First.sexual.intercourse", "Num.of.pregnancies", "Smokes..years.", "Smokes..packs.year.", "Hormonal.Contraceptives..years.","IUD..years.", "Biopsy")
+
+```
+
+
+```{r,echo=FALSE,include=FALSE}
+
+sum(is.na(contCancer))
+sum(is.na(binaryCancer))
+
+```
+```{r,echo=FALSE,message=FALSE,warning=FALSE,include=FALSE}
+# Frequency table for binary
+
+continuous <- c("Age", "Number.of.sexual.partners","First.sexual.intercourse", "Num.of.pregnancies", "Smokes..years.", "Smokes..packs.year.", "Hormonal.Contraceptives..years.","IUD..years.")
+
+binary <- c("Smokes", "Hormonal.Contraceptives", "IUD", "STDs", "STDs.condylomatosis", "STDs.syphilis", "STDs.pelvic.inflammatory.disease", "STDs.genital.herpes", "STDs.molluscum.contagiosum", "STDs.AIDS", "STDs.HIV", "STDs.Hepatitis.B", "STDs.HPV", "Biopsy")
+
+for (i in binary) {
+  print(kable(table(cancer[[i]]),caption = paste("Frequency Table for ",i)))
+}
+
+# Initial things to remove: HPV, Hepatitis B, AIDS, Molluscum Contagiosum, Genital Herpes, Pelvic Inflammatory Disease
+
+```
+
+```{r,message=FALSE,echo=FALSE,warning=FALSE, include=FALSE}
+# Table for continuous variable summary stats
+
+kable(summary(cancer[continuous]), caption = "Summary Stats for Continuous Variables")
+
+```
+
+```{r, include=FALSE}
+# Boxplot for Continuous
+
+for (i in continuous) {
+  print(ggplot(cancer, aes(x=factor(Biopsy), y=.data[[i]]))+
+          geom_boxplot()+
+          theme_minimal()+
+          xlab("Biopsy (0=No Cancer, 1=Cancer)")+
+          ggtitle(paste("Boxplot of", i, "by Biopsy")))
+}
+
+```
+
+```{r, warning=FALSE, message=FALSE, include=FALSE}
+# Histogram for all continuous
+
+for (i in continuous) {
+  print(ggplot(cancer, aes_string(x=i)) +
+          geom_histogram() +
+          theme_minimal() +
+          ggtitle(paste("Histogram of", i)))
+}
+
+
+```
+
+```{r, include=FALSE}
+# Checking if majority of continuous data is 0
+
+print(sum(cancer$IUD..years. == 0)/647)
+print(sum(cancer$Hormonal.Contraceptives..years. == 0)/647)
+print(sum(cancer$Smokes..years. == 0)/647)
+print(sum(cancer$Smokes..packs.year. == 0)/647)
+
+
+```
+
+
+```{r, include=FALSE}
+for (i in binary[binary != "Biopsy"]) {
+  print(kable(table(cancer[[i]], cancer$Biopsy),caption = paste("2x2 Table of", i, "vs. Biopsy")))
+}
+
+
+```
+
+```{r,include=FALSE}
+
+# What variables to not include:
+
+# HPV 
+# Hepatitis B
+# AIDS
+# Molluscum Contagiosum
+# Genital Herpes 
+# Pelvic Inflammatory Disease
+# Syphilis 
+# Years of smoking
+# Smokes (packs/year)
+# Years with an IUD
+
+
+# Total: 10
+
+```
+
+```{r, include=FALSE}
+
+# Making new data frame with removing unnecessary variables
+
+binaryCancerUse <- binaryCancer %>%
+  select("Smokes", "Hormonal.Contraceptives", "IUD", "STDs","STDs.condylomatosis", "STDs.HIV", "Biopsy")
+
+binaryUse <- c("Smokes", "Hormonal.Contraceptives", "IUD", "STDs","STDs.condylomatosis", "STDs.HIV")
+
+contCancerUse <- contCancer %>%
+  select("Age", "Number.of.sexual.partners","First.sexual.intercourse", "Num.of.pregnancies", "Hormonal.Contraceptives..years.","Biopsy")
+
+contUse <- c("Age", "Number.of.sexual.partners","First.sexual.intercourse", "Num.of.pregnancies", "Hormonal.Contraceptives..years.")
+
+binaryNotUse <- binaryCancer %>% 
+  select("STDs.HPV", "STDs.Hepatitis.B","STDs.HIV", "STDs.AIDS", "STDs.molluscum.contagiosum", "STDs.genital.herpes", "STDs.pelvic.inflammatory.disease", "STDs.syphilis", "STDs.condylomatosis")
+
+contNotUse <- contCancer %>%
+  select("Smokes..years.", "Smokes..packs.year.", "IUD..years.")
+
+binaryNot <- c("STDs.HPV", "STDs.Hepatitis.B","STDs.HIV", "STDs.AIDS", "STDs.molluscum.contagiosum", "STDs.genital.herpes", "STDs.pelvic.inflammatory.disease", "STDs.syphilis", "STDs.condylomatosis")
+
+contNot <- c("Smokes..years.", "Smokes..packs.year.", "IUD..years.")
+
+```
+
+
+### Exploring the Data
+
+Below, are the results of my exploratory data analysis that had influence in my decision making prior to moving onto my statistical methods and testing. I began by simply looking at the summary statistics (Table 1) for the continuous variables in the data set, which gave me some initial red flags. In the variables YearSmoke, PackSmokes, and IUDYears, they had both their median and the 3rd quartile at zero. This would suggest that the data for these variables is highly skewed and stacked at 0. Therefore, I explored these variables a little further (including HormYears just to be safe although it did not appear to be very skewed). These boxplots (Figures 1-3) displayed how heavily skewed and stacked these 3 continuous variables are at 0. This does make sense, as it would just mean that the majority of these women don't smoke or have an IUD. And, to take this one step further, I checked to see the exact proportion of the data for these variables that are 0 (Table 2). The results displayed that over 85% of three of the variables are 0. These three variables are also redundant with 2 binary variables. Therefore, I will be removing Number of Years Smoking, Packs Smoked per Year, and Years with IUD. The remaining 5 continuous variables appear to be skewed to the right (Figures 5-9). Then, I explored the binary variables. I began by checking 2x2 contingency tables of each binary variables against Biopsy to see how they were distributed. Below are the tables of binary variables that displayed concerning distributions (Tables 3-9). These variables were seven types of STDs: Syphilis, Pelvic Inflammatory Disease, Genital Herpes, Molluscum Contagiosum, AIDS, Hepatitis B, and HPV. The reason these were concerning is each of these tables contained a zero in at least one cell. Especially looking at AIDS, where no women in this dataset had AIDS (Table 7). One intriguing variable was Genital Herpes, as its only zero was also someone who had cervical cancer (Table 5). However, given that these binary explanatory variables had a zero in the 2x2 tables against the response variable, they will result in issues in the testing later on. So for these reasons, they will be removed for testing. The continuous explanatory variables to be tested on are Age, Number of Sexual Partners, Age of First Sexual Intercourse, Number of Pregnancies, and Years on Hormonal Contraceptive (5). The binary explanatory variables to be tested on are Smokes, Takes Hormonal Contraceptive, Has an IUD, Has an STD, Has Condylomatosis, and Has HIV (6). 
+
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.cap="Summary Statistics of Continuous Variables",out.width="75%"}
+
+contRename <- contCancer %>%
+  rename(
+    Age = Age,
+    NumSexPartners = Number.of.sexual.partners,
+    FirstSex = First.sexual.intercourse,
+    NumPreg = Num.of.pregnancies,
+    YearSmoke = Smokes..years.,
+    PackSmokes = Smokes..packs.year.,
+    HormYears = Hormonal.Contraceptives..years.,
+    IUDYears = IUD..years.,
+  ) %>%
+  select(-Age, -Biopsy)
+  
+
+kable(summary(contRename), caption = "Summary Stats for Continuous Variables", digits = 3)
+
+```
+
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.cap="Boxplot of Smoking by Biopsy",out.width="75%", fig.height=4,fig.pos = "H"}
+
+ggplot(contCancer, aes(x=factor(Biopsy), y=Smokes..years.))+
+  geom_boxplot()+
+  theme_minimal()+
+  xlab("Biopsy (0=No Cancer, 1=Cancer)")+
+  ylab("Years of Smoking")
+
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.cap="Boxplot of Packs Smoked per Year by Biopsy",out.width="75%", fig.height=4,fig.pos = "H"}
+
+ggplot(contCancer, aes(x=factor(Biopsy), y=Smokes..packs.year.))+
+  geom_boxplot()+
+  theme_minimal()+
+  xlab("Biopsy (0=No Cancer, 1=Cancer)")+
+  ylab("Packs Smoked per Year")
+
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.cap="Boxplot of Years with an IUD by Biopsy",out.width="75%", fig.height=4,fig.pos = "H"}
+
+ggplot(contCancer, aes(x=factor(Biopsy), y=IUD..years.))+
+  geom_boxplot()+
+  theme_minimal()+
+  xlab("Biopsy (0=No Cancer, 1=Cancer)")+
+  ylab("Years with IUD")
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.cap="Boxplot of Years Taking Hormonal Contraceptive by Biopsy",out.width="75%", fig.height=4,fig.pos = "H"}
+
+ggplot(contCancer, aes(x=factor(Biopsy), y=Hormonal.Contraceptives..years.))+
+  geom_boxplot()+
+  theme_minimal()+
+  xlab("Biopsy (0=No Cancer, 1=Cancer)")+
+  ylab("Years Taking Hormonal Contraceptive")
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.cap="Table of Proportion of Variables = 0",out.width="75%", fig.height=4,fig.pos = "H"}
+
+checkProp <- data.frame(
+  Variables = c("IUD Years",
+             "Hormonal Contraceptives Years",
+             "Smokes Years",
+             "Smokes Packs/Year"),
+  propZero = c(
+    sum(cancer$IUD..years. == 0) / 647,
+    sum(cancer$Hormonal.Contraceptives..years. == 0) / 647,
+    sum(cancer$Smokes..years. == 0) / 647,
+    sum(cancer$Smokes..packs.year. == 0) / 647
+  )
+)
+
+kable(checkProp, digits = 3, caption = "Proportion of Zero Values in Continuous Variables") %>%
+  kable_styling(full_width = FALSE)
+
+
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.cap="Histogram of Women Age",out.width="75%", fig.height=4,fig.pos = "H"}
+
+ggplot(contCancer, aes(Age)) +
+  geom_histogram()+
+  theme_minimal()+
+  xlab("Women Age")+
+  ylab("Count")
+
+```
+
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.cap="Histogram of Number of Sexual Partners",out.width="75%", fig.height=4,fig.pos = "H"}
+
+ggplot(contCancer, aes(Number.of.sexual.partners)) +
+  geom_histogram()+
+  theme_minimal()+
+  xlab("Number of Sexual Partners")+
+  ylab("Count")
+
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.cap="Histogram of Age of First Sexual Intercourse",out.width="75%", fig.height=4,fig.pos = "H"}
+
+ggplot(contCancer, aes(First.sexual.intercourse)) +
+  geom_histogram()+
+  theme_minimal()+
+  xlab("Age of First Sexual Intercourse")+
+  ylab("Count")
+
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.cap="Histogram of Number of Pregnancies",out.width="75%", fig.height=4,fig.pos = "H"}
+
+ggplot(contCancer, aes(Num.of.pregnancies)) +
+  geom_histogram()+
+  theme_minimal()+
+  xlab("Number of Pregnancies")+
+  ylab("Count")
+
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.cap="Histogram of Years on Hormonal Contraceptives",out.width="75%", fig.height=4,fig.pos = "H"}
+
+ggplot(contCancer, aes(Hormonal.Contraceptives..years.)) +
+  geom_histogram()+
+  theme_minimal()+
+  xlab("Years on Hormonal Contraceptives")+
+  ylab("Count")
+
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.cap="Tables of STD's Not to be Used",out.width="75%",fig.pos = "H"}
+# Tables of Binary to not use
+
+
+tableSyp <- table(cancer$STDs.syphilis, cancer$Biopsy)
+
+kable(tableSyp,
+      caption = "2×2 Table: Syphilis vs Biopsy") %>%
+  kable_styling(full_width = FALSE)
+
+tablePel <- table(cancer$STDs.pelvic.inflammatory.disease, cancer$Biopsy)
+
+kable(tablePel,
+      caption = "2×2 Table: Pelvic Inflammatory Disease vs Biopsy") %>%
+  kable_styling(full_width = FALSE)
+
+tableGen <- table(cancer$STDs.genital.herpes, cancer$Biopsy)
+
+kable(tableGen,
+      caption = "2×2 Table: Genital Herpes vs Biopsy") %>%
+  kable_styling(full_width = FALSE)
+
+tableMoll <- table(cancer$STDs.molluscum.contagiosum, cancer$Biopsy)
+
+kable(tableMoll,
+      caption = "2×2 Table: Molluscum Contagiosum vs Biopsy") %>%
+  kable_styling(full_width = FALSE)
+
+tableAIDS <- table(cancer$STDs.AIDS, cancer$Biopsy)
+
+kable(tableAIDS,
+      caption = "2×2 Table: AIDS vs Biopsy") %>%
+  kable_styling(full_width = FALSE)
+
+tableHep <- table(cancer$STDs.Hepatitis.B, cancer$Biopsy)
+
+kable(tablePel,
+      caption = "2×2 Table: Hepatitis B vs Biopsy") %>%
+  kable_styling(full_width = FALSE)
+
+tableHPV <- table(cancer$STDs.HPV, cancer$Biopsy)
+
+kable(tableHPV,
+      caption = "2×2 Table: HPV vs Biopsy") %>%
+  kable_styling(full_width = FALSE)
+
+
+
+```
+
+
+
+
+
+
+
+### Statistical Methods
+
+In the desire to find any possible predictors and risk factors of cervical cancer through the now five continuous variables and six binary variables, I utilized the tests of the Wilcoxon-Rank Sum Test and Fishers Exact Test for 2x2 Contingency Tables. The Wilcoxon-Rank Sum Test was used here due to the skewed and non-normal distributions of the continuous variables. The Fisher Exact Test was used here due the large imbalance in data of the cell counts in the 2x2 tables. The large imbalance in the data could cause a decrease the statistical power in finding risk factors of cervical cancer. An experiment-wise error rate could be implemented here to reduce the chance of having a false positive in rejecting the null hypothesis when it should not have been. If the experiment-wise error rate were to be implented, the alpha value would be reduced from the 0.05 level to 0.05/11 = 0.004545455. This is an extremely low alpha value, which could result in it being difficult to have any significant results. 
+
+```{r, include=FALSE}
+# Binary Fisher Exact Test
+SmokesTable <- table(cancer$Smokes, cancer$Biopsy)
+SmokesFisher <- fisher.test(SmokesTable)
+print(SmokesFisher)
+
+HCtable <- table(cancer$Hormonal.Contraceptives, cancer$Biopsy)
+HCfisher <- fisher.test(HCtable)
+print(HCfisher)
+
+IUDtable <- table(cancer$IUD, cancer$Biopsy)
+IUDfisher <- fisher.test(IUDtable)
+print(IUDfisher)
+
+STDtable <- table(cancer$STDs, cancer$Biopsy)
+STDfisher <- fisher.test(STDtable)
+print(STDfisher)
+
+CondylomatosisTable <- table(cancer$STDs.condylomatosis, cancer$Biopsy)
+Condyfisher <- fisher.test(CondylomatosisTable)
+print(Condyfisher)
+
+HIVtable <- table(cancer$STDs.HIV, cancer$Biopsy)
+HIVfisher <- fisher.test(HIVtable)
+print(HIVfisher)
+
+
+# Continuous Wilcoxon-Rank Test
+
+AgeWilcox <- wilcox.test(Age ~ Biopsy, data = cancer, correct = FALSE)
+print(AgeWilcox)
+
+NumSexPartnerWilcox <- wilcox.test(Number.of.sexual.partners ~ Biopsy,
+                                   data = cancer, correct = FALSE)
+print(NumSexPartnerWilcox)
+
+AgeFirstSexWilcox <- wilcox.test(First.sexual.intercourse ~ Biopsy,
+                                 data = cancer, correct = FALSE)
+print(AgeFirstSexWilcox)
+
+NumPregnancyWilcox <- wilcox.test(Num.of.pregnancies ~ Biopsy,
+                                  data = cancer, correct = FALSE)
+print(NumPregnancyWilcox)
+
+YearsHCwilcox <- wilcox.test(Hormonal.Contraceptives..years. ~ Biopsy,
+                             data = cancer, correct = FALSE)
+print(YearsHCwilcox)
+
+
+```
+
+```{r,  echo=FALSE, warning=FALSE, message=FALSE, fig.cap="Table of Wilcoxon Rank Sum Test Results",out.width="75%"}
+# Table for Wilcoxon results
+
+wilcox <- data.frame(
+  Variable = c("Age","Number of Sexual Partners", "Age at First Intercourse", "Number of Pregnancies", "Hormonal Contraceptives (years)"),
+  W = c(
+    AgeWilcox$statistic,
+    NumSexPartnerWilcox$statistic,
+    AgeFirstSexWilcox$statistic,
+    NumPregnancyWilcox$statistic,
+    YearsHCwilcox$statistic),
+  pvalue = c(
+    AgeWilcox$p.value,
+    NumSexPartnerWilcox$p.value,
+    AgeFirstSexWilcox$p.value,
+    NumPregnancyWilcox$p.value,
+    YearsHCwilcox$p.value)
+)
+
+kable(wilcox,digits = 4,caption = "Wilcoxon Rank-Sum Test Results for Continuous Predictors") %>%
+  kable_styling(full_width = FALSE)
+
+
+
+```
+
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.cap="Table of Fisher Exact Test Results",out.width="75%"}
+
+# Table for fisher results
+
+fisher <- data.frame(
+  Variable = c("Smokes", "Hormonal Contraceptives", "IUD", "STDs", "Condylomatosis", "HIV"),
+  pvalue = c(
+    SmokesFisher$p.value,
+    HCfisher$p.value,
+    IUDfisher$p.value,
+    STDfisher$p.value,
+    Condyfisher$p.value,
+    HIVfisher$p.value),
+  Odds = c(
+    SmokesFisher$estimate,
+    HCfisher$estimate,
+    IUDfisher$estimate,
+    STDfisher$estimate,
+    Condyfisher$estimate,
+    HIVfisher$estimate
+  )
+)
+
+kable(fisher, digits = 4, caption = "Fisher's Exact Test Results for Binary Predictors") %>%
+  kable_styling(full_width = FALSE)
+
+
+```
+
+
+
+
+### Conclusion
+
+The p-value results from running the Wilcoxon-Rank Sum Test for the 5 continuous variables are: Age(0.6693), Number of Sexual Partners(0.3814), Age at First Sexual Intercourse(0.9861), Number of Pregnancies(0.2462), and Hormonal Contraceptives Years (0.4511), as seen in Table 10. None of the continuous variables were found to be statistically significant risk factors of cervical cancer. The p-value results from running Fisher's Exact Test are: Smokes(0.3704), Hormonal Contraceptives(0.6647), IUD(0.1698), STDs(0.0191), Condylomatosis(0.0319), and HIV(0.0694), as seen in Table 11. If there were to be no experiment-wise error rate implemented, then STDs and Condylomatosis would be found as statistically significant risk factors for cervical cancer. However, if the experiment-wise error rate were to be implemented, there would be no statistically significant risk factors found for cervical cancer from this data set. If finding statistically significant results is desired, as it is a severe issue and finding risk factors early on is important, then: There is statistically significant evidence to suggest that either having the STD Condylomatosis (3.9388 times higher odds to develop cervical cancer) or any STD (3.4322 times higher odds to develop cervical cancer) is a risk factor in developing cervical cancer.
+
+
